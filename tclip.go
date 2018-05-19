@@ -15,11 +15,11 @@ import (
   "github.com/mitchellh/go-homedir"
 )
 
-var app_version = "0.1.0"
-var key_file, err = homedir.Expand("~/.netclip_key")
-var base_url = "http://localhost:8000/"
+var app_version = "0.4.0"
+var key_file, err = homedir.Expand("~/.tclip_key")
+var base_url = "https://app.tinyclips.app/"
 
-var log = logging.MustGetLogger("netclip")
+var log = logging.MustGetLogger("tclip")
 
 var (
 	printHelp bool
@@ -103,14 +103,14 @@ func getData(endpoint string) ServerResponse {
 }
 
 func main() {
-	log_backend, err := logging.NewSyslogBackend("netclip")
+	log_backend, err := logging.NewSyslogBackend("tclip")
 
 	if err != nil { fmt.Printf("Error: %", err) }
 
 	logging.SetBackend(log_backend)
         var format = logging.MustStringFormatter("%{level} %{message}")
         logging.SetFormatter(format)
-        logging.SetLevel(logging.INFO, "netclip")
+        logging.SetLevel(logging.INFO, "tclip")
 
 	flag.BoolVar(&printHelp, "help", true, "Print this help message.")
         flag.StringVar(&key, "key", "", "Set the API Key")
@@ -120,9 +120,14 @@ func main() {
         flag.Parse()
 
 	if printHelp {
-		fmt.Println("-----------------------------")
+		fmt.Println("NAME:")
+		fmt.Println("    tclip - A cloud based sharable, distributed clipboard utility\n")
+		fmt.Println("DESCRIPTION:")
+		fmt.Println("    TinyClips lets you copy and paste text between machines by using a secure, cloud based clipboard.\n")
+		fmt.Println("VERSION:")
+		fmt.Println("    " + app_version + "\n")
+		fmt.Println("FLAGS:")
 		flag.PrintDefaults()
-		fmt.Println("-----------------------------")
 		os.Exit(0)
         }
 
@@ -156,7 +161,7 @@ func main() {
                 key = saved_key
 
         } else {
-                fmt.Println("No API key set. Set with netclip -key [key]. If you don't have a key, first call netclip -register to obtain one.")
+                fmt.Println("No API key set. Set with tclip -key [key]. If you don't have a key, first call tclip -register to obtain one.")
                 os.Exit(1)
         }
 
