@@ -22,6 +22,7 @@ var base_url = "http://localhost:8000/"
 var log = logging.MustGetLogger("netclip")
 
 var (
+	printHelp bool
         key string
         register bool
         version bool
@@ -30,6 +31,30 @@ var (
 type ServerResponse struct {
         ResponseCode string
         Message string
+}
+
+func readKey() string {
+	if _, err := os.Stat(key_file); err == nil {
+		b, err := ioutil.ReadFile(key_file)
+		if err != nil { log.Error("%v", err) }
+		return string(b)
+	}
+
+	return ""
+}
+
+func writeKey(new_key string) bool {
+	// The key file is read only, so we will remove it before attempting to write it out again.
+	os.Remove(key_file)
+
+	// Now we will write the provided key back out to the file
+	err := ioutil.WriteFile(key_file, []byte(new_key), 0400)
+	if err != nil { 
+		fmt.Printf("Error: %v\n", err) 
+		return false
+	}
+
+	return true
 }
 
 func postData(endpoint string, data url.Values) ServerResponse {
@@ -78,11 +103,28 @@ func getData(endpoint string) ServerResponse {
 }
 
 func main() {
+	log_backend, err := logging.NewSyslogBackend("netclip")
+
+	if err != nil { fmt.Printf("Error: %", err) }
+
+	logging.SetBackend(log_backend)
+        var format = logging.MustStringFormatter("%{level} %{message}")
+        logging.SetFormatter(format)
+        logging.SetLevel(logging.INFO, "netclip")
+
+	flag.BoolVar(&printHelp, "help", true, "Print this help message.")
         flag.StringVar(&key, "key", "", "Set the API Key")
         flag.BoolVar(&register, "register", false, "Generate a new API key")
         flag.BoolVar(&version, "version", false, "Show Version")
 
         flag.Parse()
+
+	if printHelp {
+		fmt.Println("-----------------------------")
+		flag.PrintDefaults()
+		fmt.Println("-----------------------------")
+		os.Exit(0)
+        }
 
         if version {
                 fmt.Println(app_version)
@@ -90,25 +132,28 @@ func main() {
         }
 
         if register {
-                v := url.Values{}
-                v.Add("action", "register")
-                res := postData("register", v)
-                fmt.Println(res.Message)
+		saved_key := readKey()
+		if saved_key != "" {
+			fmt.Println("You have already registered this machine. Your API key is: " + saved_key)
+		} else {
+			v := url.Values{}
+			v.Add("action", "register")
+			res := postData("register", v)
+
+			writeKey(res.Message)
+			fmt.Println("Your API key is: " + res.Message)
+		}
                 os.Exit(0)
         }
 
+	saved_key := readKey()
+
         if key != "" {
-                // The key file is read only, so we will remove it before attempting to write it out again.
-                os.Remove(key_file)
-
-                // Now we will write the provided key back out to the file
-                err := ioutil.WriteFile(key_file, []byte(key), 0400)
-                if err != nil { fmt.Printf("Error: %v\n", err) }
-
-        } else if _, err := os.Stat(key_file); err == nil {
-                b, err := ioutil.ReadFile(key_file)
-                if err != nil { log.Error("%v", err) }
-                key = string(b)
+		writeKey(key)
+		fmt.Println("Your API key has been set.")
+		os.Exit(0)
+        } else if saved_key != "" {
+                key = saved_key
 
         } else {
                 fmt.Println("No API key set. Set with netclip -key [key]. If you don't have a key, first call netclip -register to obtain one.")
@@ -119,15 +164,6 @@ func main() {
         if err != nil {
                 panic(err)
         }
-
-	log_backend, err := logging.NewSyslogBackend("netclip")
-
-	if err != nil { fmt.Printf("Error: %", err) }
-	logging.SetBackend(log_backend)
-
-        var format = logging.MustStringFormatter("%{level} %{message}")
-        logging.SetFormatter(format)
-        logging.SetLevel(logging.INFO, "netclip")
 
         if fi.Mode() & os.ModeNamedPipe == 0 {
                 // Here I'll want to fetch the last clip and spit it out
