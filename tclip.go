@@ -17,7 +17,8 @@ import (
 
 var app_version = "0.4.0"
 var key_file, err = homedir.Expand("~/.tclip_key")
-var base_url = "https://app.tinyclips.app/"
+//var base_url = "https://app.tinyclips.app/"
+var base_url = "http://localhost:5000/api/"
 
 var log = logging.MustGetLogger("tclip")
 
@@ -112,7 +113,7 @@ func main() {
         logging.SetFormatter(format)
         logging.SetLevel(logging.INFO, "tclip")
 
-	flag.BoolVar(&printHelp, "help", true, "Print this help message.")
+	flag.BoolVar(&printHelp, "help", false, "Print this help message.")
         flag.StringVar(&key, "key", "", "Set the API Key")
         flag.BoolVar(&register, "register", false, "Generate a new API key")
         flag.BoolVar(&version, "version", false, "Show Version")
@@ -143,7 +144,7 @@ func main() {
 		} else {
 			v := url.Values{}
 			v.Add("action", "register")
-			res := postData("register", v)
+			res := postData("register/", v)
 
 			writeKey(res.Message)
 			fmt.Println("Your API key is: " + res.Message)
@@ -192,10 +193,11 @@ func main() {
 		clip = strings.TrimSpace(clip)
 
                 v := url.Values{}
+		v.Add("api_key", key)
                 v.Add("action", "clip")
                 v.Add("clip", clip)
 
-                res := postData("clip/save/" + key, v)
+                res := postData("clip/save/", v)
                 fmt.Println(res.Message)
         }
 }
